@@ -1,78 +1,161 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { useEffect, useState } from "react";
 
 export default function Home() {
+  const [todos, setTodos] = useState([]);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [editId, setEditId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("todo");
+
+  // Load Todos
+  const fetchTodos = async () => {
+    const res = await fetch("/api/todos");
+    const data = await res.json();
+    setTodos(data);
+  };
+
+  useEffect(() => {
+  const load = async () => {
+    await fetchTodos();
+  };
+  load();
+}, []);
+
+
+  // Add or Update Todo
+  const handleSubmit = async () => {
+    if (!title.trim()) return;
+
+    if (editId) {
+      await fetch("/api/todos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: editId,
+          title,
+          description,
+        }),
+      });
+
+      setEditId(null);
+    } else {
+      await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description }),
+      });
+    }
+
+    setTitle("");
+    setDescription("");
+    fetchTodos();
+  };
+
+  // Delete Todo
+  const handleDelete = async (id) => {
+    await fetch("/api/todos", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+
+    fetchTodos();
+  };
+
+  // Mark done or undone
+  const toggleComplete = async (todo) => {
+    await fetch("/api/todos", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...todo,
+        completed: !todo.completed,
+      }),
+    });
+
+    fetchTodos();
+  };
+
+  // Edit
+  const handleEdit = (todo) => {
+    setTitle(todo.title);
+    setDescription(todo.description);
+    setEditId(todo.id);
+  };
+
+  const filteredTodos = todos.filter((t) => {
+    const match = t.title.toLowerCase().includes(search.toLowerCase());
+    if (tab === "todo") return !t.completed && match;
+    if (tab === "completed") return t.completed && match;
+  });
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div style={{ padding: "30px" }}>
+      <h1>To-Do App</h1>
+
+      {/* Search */}
+      <input
+        placeholder="Search..."
+        style={{ padding: "10px", width: "300px" }}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {/* Tabs */}
+      <div style={{ marginTop: 15 }}>
+        <button onClick={() => setTab("todo")}>To Do</button>
+        <button onClick={() => setTab("completed")}>Completed</button>
+      </div>
+
+      {/* Form */}
+      <div style={{ marginTop: 20 }}>
+        <input
+          placeholder="Title"
+          style={{ padding: 10, marginRight: 10 }}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        <input
+          placeholder="Description"
+          style={{ padding: 10, marginRight: 10 }}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+
+        <button onClick={handleSubmit}>
+          {editId ? "Update" : "Add"}
+        </button>
+      </div>
+
+      {/* Todo List */}
+      <table border="1" style={{ marginTop: 20, width: "100%" }}>
+        <thead>
+          <tr>
+            <th>ID</th><th>Title</th><th>Description</th>
+            <th>Date</th><th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {filteredTodos.map((todo) => (
+            <tr key={todo.id}>
+              <td>{todo.id}</td>
+              <td>{todo.title}</td>
+              <td>{todo.description}</td>
+              <td>{todo.date}</td>
+
+              <td>
+                <button onClick={() => handleEdit(todo)}>Edit</button>
+                <button onClick={() => handleDelete(todo.id)}>Delete</button>
+                <button onClick={() => toggleComplete(todo)}>
+                  {todo.completed ? "Undo" : "Done"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
