@@ -1,153 +1,138 @@
-import { useEffect, useState } from "react";
+"use client";
+import { useState } from "react";
 
-export default function Home() {
+export default function Page() {
+  return (
+    <div className="min-h-screen bg-purple-700 flex justify-center p-6">
+      <div className="w-full max-w-3xl bg-white shadow-2xl rounded-2xl p-8 border border-gray-200 text-black">
+        <h1 className="text-4xl font-extrabold text-center mb-6 drop-shadow-lg">
+          To-Do Manager
+        </h1>
+        <TodoApp />
+      </div>
+    </div>
+  );
+}
+
+function TodoApp() {
   const [todos, setTodos] = useState([]);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [editId, setEditId] = useState(null);
+  const [filter, setFilter] = useState("todos");
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("todo");
+  const [form, setForm] = useState({ title: "", description: "" });
+  const [editingId, setEditingId] = useState(null);
 
-  // Load Todos
-  const fetchTodos = async () => {
-    const res = await fetch("/api/todos");
-    const data = await res.json();
-    setTodos(data);
-  };
-
-  // Load once on page load (safe version)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchTodos();
-  }, []);
-
-  // Add or Update Todo
-  const handleSubmit = async () => {
-    if (!title.trim()) return;
-
-    if (editId) {
-      await fetch("/api/todos", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: editId,
-          title,
-          description,
-        }),
-      });
-
-      setEditId(null);
-    } else {
-      await fetch("/api/todos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description }),
-      });
-    }
-
-    setTitle("");
-    setDescription("");
-    fetchTodos();
-  };
-
-  // Delete Todo
-  const handleDelete = async (id) => {
-    await fetch("/api/todos", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-
-    fetchTodos();
-  };
-
-  // Mark done or undone
-  const toggleComplete = async (todo) => {
-    await fetch("/api/todos", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...todo,
-        completed: !todo.completed,
-      }),
-    });
-
-    fetchTodos();
-  };
-
-  // Load values for editing
-  const handleEdit = (todo) => {
-    setTitle(todo.title);
-    setDescription(todo.description);
-    setEditId(todo.id);
-  };
-
-  // Filter todos (search + tabs)
-  const filteredTodos = todos.filter((t) => {
-    const match = t.title.toLowerCase().includes(search.toLowerCase());
-    if (tab === "todo") return !t.completed && match;
-    if (tab === "completed") return t.completed && match;
+  const filtered = todos.filter((t) => {
+    const matchesFilter = filter === "todos" ? !t.completed : t.completed;
+    const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
+  const addTodo = () => {
+    if (!form.title.trim()) return;
+    setTodos([
+      ...todos,
+      {
+        id: Date.now(),
+        title: form.title,
+        description: form.description,
+        date: new Date().toLocaleString(),
+        completed: false,
+      },
+    ]);
+    setForm({ title: "", description: "" });
+  };
+
+  const updateTodo = () => {
+    setTodos(
+      todos.map((t) =>
+        t.id === editingId
+          ? { ...t, title: form.title, description: form.description, date: new Date().toLocaleString() }
+          : t
+      )
+    );
+    setEditingId(null);
+    setForm({ title: "", description: "" });
+  };
+
+  const deleteTodo = (id) => setTodos(todos.filter((t) => t.id !== id));
+  const toggleComplete = (id) =>
+    setTodos(todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  const startEdit = (todo) => setEditingId(todo.id) || setForm({ title: todo.title, description: todo.description });
+
   return (
-    <div style={{ padding: "30px" }}>
-      <h1>To-Do App</h1>
-
-      {/* Search */}
-      <input
-        placeholder="Search..."
-        style={{ padding: "10px", width: "300px" }}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      {/* Tabs */}
-      <div style={{ marginTop: 15 }}>
-        <button onClick={() => setTab("todo")}>To Do</button>
-        <button onClick={() => setTab("completed")}>Completed</button>
-      </div>
-
-      {/* Form */}
-      <div style={{ marginTop: 20 }}>
+    <div className="bg-white shadow-xl rounded-2xl p-6 border border-gray-200 text-black">
+      <div className="flex gap-3 mb-4">
         <input
-          placeholder="Title"
-          style={{ padding: 10, marginRight: 10 }}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Search tasks..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border rounded-lg p-2 w-full shadow-sm focus:ring-2 focus:ring-teal-400 focus:outline-none"
         />
-
-        <input
-          placeholder="Description"
-          style={{ padding: 10, marginRight: 10 }}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-
-        <button onClick={handleSubmit}>
-          {editId ? "Update" : "Add"}
+        <button
+          onClick={editingId ? updateTodo : addTodo}
+          className="bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition font-semibold"
+        >
+          {editingId ? "Update" : "Add"}
         </button>
       </div>
 
-      {/* Todo List */}
-      <table border="1" style={{ marginTop: 20, width: "100%" }}>
+      <div className="flex gap-4 mb-4">
+        <button
+          onClick={() => setFilter("todos")}
+          className={`px-4 py-2 rounded-lg font-semibold shadow transition ${
+            filter === "todos"
+              ? "bg-blue-600 text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+        >
+          To-Do
+        </button>
+        <button
+          onClick={() => setFilter("completed")}
+          className={`px-4 py-2 rounded-lg font-semibold shadow transition ${
+            filter === "completed"
+              ? "bg-green-600 text-white"
+              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+          }`}
+        >
+          Completed
+        </button>
+      </div>
+
+      <table className="w-full border-collapse rounded-xl overflow-hidden shadow">
         <thead>
-          <tr>
-            <th>ID</th><th>Title</th><th>Description</th>
-            <th>Date</th><th>Actions</th>
+          <tr className="bg-gray-200 text-left">
+            <th className="p-3">ID</th>
+            <th className="p-3">Title</th>
+            <th className="p-3">Description</th>
+            <th className="p-3">Date</th>
+            <th className="p-3">Actions</th>
           </tr>
         </thead>
-
         <tbody>
-          {filteredTodos.map((todo) => (
-            <tr key={todo.id}>
-              <td>{todo.id}</td>
-              <td>{todo.title}</td>
-              <td>{todo.description}</td>
-              <td>{todo.date}</td>
-
-              <td>
-                <button onClick={() => handleEdit(todo)}>Edit</button>
-                <button onClick={() => handleDelete(todo.id)}>Delete</button>
-                <button onClick={() => toggleComplete(todo)}>
+          {filtered.map((todo) => (
+            <tr key={todo.id} className="border-b hover:bg-gray-50 transition">
+              <td className="p-3">{todo.id}</td>
+              <td className="p-3">{todo.title}</td>
+              <td className="p-3">{todo.description}</td>
+              <td className="p-3">{todo.date}</td>
+              <td className="p-3 flex gap-2">
+                <button
+                  onClick={() => startEdit(todo)}
+                  className="bg-blue-600 text-white px-3 py-1 rounded-lg shadow hover:bg-blue-700 transition"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  className="bg-red-600 text-white px-3 py-1 rounded-lg shadow hover:bg-red-700 transition"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => toggleComplete(todo.id)}
+                  className="bg-green-600 text-white px-3 py-1 rounded-lg shadow hover:bg-green-700 transition"
+                >
                   {todo.completed ? "Undo" : "Done"}
                 </button>
               </td>
@@ -155,6 +140,22 @@ export default function Home() {
           ))}
         </tbody>
       </table>
+
+      <div className="mt-6 bg-gray-50 p-4 rounded-xl shadow-inner text-black">
+        <h3 className="font-bold text-lg mb-2">{editingId ? "Edit Task" : "New Task"}</h3>
+        <input
+          placeholder="Title"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          className="border rounded-lg p-2 w-full shadow-sm mb-3 focus:ring-2 focus:ring-teal-400"
+        />
+        <textarea
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          className="border rounded-lg p-2 w-full shadow-sm mb-3 h-24 focus:ring-2 focus:ring-teal-400"
+        />
+      </div>
     </div>
   );
 }
