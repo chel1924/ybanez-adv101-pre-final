@@ -15,13 +15,11 @@ export default function Home() {
     setTodos(data);
   };
 
+  // Load once on page load (safe version)
   useEffect(() => {
-  const load = async () => {
-    await fetchTodos();
-  };
-  load();
-}, []);
-
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchTodos();
+  }, []);
 
   // Add or Update Todo
   const handleSubmit = async () => {
@@ -77,13 +75,14 @@ export default function Home() {
     fetchTodos();
   };
 
-  // Edit
+  // Load values for editing
   const handleEdit = (todo) => {
     setTitle(todo.title);
     setDescription(todo.description);
     setEditId(todo.id);
   };
 
+  // Filter todos (search + tabs)
   const filteredTodos = todos.filter((t) => {
     const match = t.title.toLowerCase().includes(search.toLowerCase());
     if (tab === "todo") return !t.completed && match;
